@@ -1,0 +1,6 @@
+# Local SQLite database (accounts and scores) — never upload it
+data/
+# Rebuilt by Vercel
+build/
+node_modules/
+build-gh-pages/
