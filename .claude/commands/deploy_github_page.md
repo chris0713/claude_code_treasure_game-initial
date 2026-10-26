@@ -46,8 +46,11 @@ Run `git remote -v`.
 ## 6. Build for GitHub Pages
 1. If `node_modules/` is missing, run `npm install`.
 2. The site is served from `https://<login>.github.io/<repo>/`, so assets need the `/<repo>/` prefix. Pass it on the command line only — do **not** edit `base` in `vite.config.ts` (local dev and other deploys stay at `/`):
-   `npm run build -- --base=/<repo>/ --outDir build-gh-pages`
-3. If it fails, show the error and **stop**. (If the error mentions `node:sqlite`, this project needs Node ≥ 22.13 — show `node --version` and tell me to upgrade.) Check that `build-gh-pages/index.html` references `/<repo>/assets/`.
+   - Bash (macOS, Linux, Git Bash on Windows): `MSYS_NO_PATHCONV=1 npm run build -- --base=/<repo>/ --outDir build-gh-pages`
+   - PowerShell or cmd: `npm run build -- --base=/<repo>/ --outDir build-gh-pages`
+
+   `MSYS_NO_PATHCONV=1` is required in Git Bash: without it, Git Bash rewrites `/<repo>/` into a Windows path such as `/Program Files/Git/<repo>/`, and the live site loads a blank page. It has no effect on macOS or Linux.
+3. If it fails, show the error and **stop**. (If the error mentions `node:sqlite`, this project needs Node ≥ 22.13 — show `node --version` and tell me to upgrade.) Then check the exact asset paths: every `src=`/`href=` to an asset in `build-gh-pages/index.html` must start with `"/<repo>/assets/` (quote included), e.g. `grep -oE '(src|href)="[^"]*assets/[^"]*"' build-gh-pages/index.html`. If any path has something before `/<repo>/` (such as `Program Files` or a drive letter), delete `build-gh-pages/` and rebuild with the Bash command above. A substring match on `/<repo>/assets/` is not enough.
 
 ## 7. Publish to the gh-pages branch
 `npx --yes gh-pages@6.3.0 -d build-gh-pages -b gh-pages -o origin --nojekyll -m "Deploy <short sha from git rev-parse --short HEAD>"`
@@ -63,6 +66,7 @@ This pushes only the built files. If it fails, show the error and **stop** — d
 ## 9. Wait until it is live
 Poll `gh api repos/<login>/<repo>/pages/builds/latest --jq .status` about every 15 s for up to 5 minutes (use Monitor with an until-loop, not repeated sleeps) until it is `built`. If it is `errored`, show `gh api repos/<login>/<repo>/pages/builds/latest` and **stop**.
 Then `curl -s -o /dev/null -w "%{http_code}" https://<login>.github.io/<repo>/` should be `200` (a fresh site can take another minute; retry a few times before reporting a problem).
+A `200` page can still be blank, so also fetch the live `index.html` (add a `?n=<random>` query to skip caches), check that its JS and CSS `src`/`href` start with `/<repo>/assets/`, and check that each of those files returns `200`. If not, report it — don't call the deploy done.
 
 ## 10. Report (short)
 - The live URL as a clickable link: `https://<login>.github.io/<repo>/`.
